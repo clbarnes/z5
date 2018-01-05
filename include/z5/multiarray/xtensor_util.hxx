@@ -76,11 +76,13 @@ namespace multiarray {
     }
 
     // FIXME N > 3 is segfaulting
-    template<typename T, typename VIEW, typename SHAPE_TYPE>
+    template<typename T, typename VIEW, typename SHAPE_TYPE, typename ARRAY>
     inline void copyBufferToViewND(const std::vector<T> & buffer,
                                    xt::xexpression<VIEW> & viewExperession,
-                                   const SHAPE_TYPE & arrayStrides) {
+                                   const SHAPE_TYPE & arrayStrides,
+                                   xt::xexpression<ARRAY> & arrayExpression) {
         auto & view = viewExperession.derived_cast();
+        auto & array = arrayExpression.derived_cast();
         const size_t dim = view.dimension();
         size_t bufferOffset = 0;
         size_t viewOffset = 0;
@@ -96,9 +98,27 @@ namespace multiarray {
         // we copy data to consecutive pieces of memory in the view
         // until we have exhausted the buffer
 
+        std::cout << "Starting copy!" << std::endl;
+        auto globalOffset = std::distance(&array(0), &view(0));
+        std::cout << "Offset in array " << globalOffset << std::endl;
         // we start out loop at the second from last dimension
         // (last dimension is the fastest moving and consecutive in memory)
         for(int d = dim - 2; d >= 0;) {
+            //std::cout << "Copy from (source) " << bufferOffset << " to " << bufferOffset + memLen << std::endl;
+            //std::cout << "Copy to (dest) " << viewOffset << std::endl;
+            if(globalOffset + viewOffset > array.size()) {
+                std::cout << globalOffset + viewOffset << std::endl;
+                std::cout << viewOffset << std::endl;
+                std::cout << array.size() << std::endl;
+                std::cout << "Out of range !" << std::endl;
+                throw std::runtime_error("Fuuuuu");
+            }
+            auto val = *(&view(0) + viewOffset);
+            if(val != 0) {
+                std::cout << "Out of range !" << std::endl;
+                std::cout << "Val " << val << std::endl;
+                throw std::runtime_error("Fuuuuu");
+            }
             // copy the peace of buffer that is consectuve to our view
             std::copy(buffer.begin() + bufferOffset,
                       buffer.begin() + bufferOffset + memLen,
@@ -120,6 +140,7 @@ namespace multiarray {
                     break;
                 // otherwise, decrease the dimension
                 } else {
+                    //std::cout << "End of dim " << d << std::endl;
                     // reset the position in this dimension
                     dimPositions[d] = 0;
 
@@ -127,10 +148,14 @@ namespace multiarray {
                     // -> we will decrease the axis, so we need to
                     // correct for the positions we have changed in a lower dimension
                     covered = (viewOffset - covered);
+                    //std::cout << "Covered since last junp: " << covered << std::endl;
+                    //std::cout << "Old view offset: " << viewOffset << std::endl;
                     viewOffset -= covered;
                     if(d > 0) {
                         viewOffset += arrayStrides[d - 1];
+                        //std::cout << "Strides: " << arrayStrides[d - 1] << std::endl;
                     }
+                    //std::cout << "New view offset: " << viewOffset << std::endl;
                     covered = viewOffset;
                 }
             }
@@ -139,16 +164,17 @@ namespace multiarray {
 
 
     // FIXME this only works for row-major (C) memory layout
-    template<typename T, typename VIEW, typename SHAPE_TYPE>
+    template<typename T, typename VIEW, typename SHAPE_TYPE, typename ARRAY>
     inline void copyBufferToView(const std::vector<T> & buffer,
                                  xt::xexpression<VIEW> & viewExperession,
-                                 const SHAPE_TYPE & arrayStrides) {
+                                 const SHAPE_TYPE & arrayStrides,
+                                 xt::xexpression<ARRAY> & outExpression) {
         auto & view = viewExperession.derived_cast();
         // ND impl doesn't work for 1D
         if(view.dimension() == 1) {
             std::copy(buffer.begin(), buffer.end(), view.begin());
         } else {
-            copyBufferToViewND(buffer, viewExperession, arrayStrides);
+            copyBufferToViewND(buffer, viewExperession, arrayStrides, outExpression);
         }
     }
 
