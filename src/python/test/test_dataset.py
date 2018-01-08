@@ -16,13 +16,15 @@ class TestDataset(unittest.TestCase):
     def setUp(self):
         self.shape = (100, 100, 100)
         self.ff_zarr = z5py.File('array.zr', True)
-        self.ff_zarr.create_dataset(
-            'test', dtype='float32', shape=self.shape, chunks=(10, 10, 10)
-        )
+        self.ff_zarr.create_dataset('test',
+                                    dtype='float32',
+                                    shape=self.shape,
+                                    chunks=(10, 10, 10))
         self.ff_n5 = z5py.File('array.n5', False)
-        self.ff_n5.create_dataset(
-            'test', dtype='float32', shape=self.shape, chunks=(10, 10, 10)
-        )
+        self.ff_n5.create_dataset('test',
+                                  dtype='float32',
+                                  shape=self.shape,
+                                  chunks=(10, 10, 10))
 
     def tearDown(self):
         if(os.path.exists('array.zr')):
