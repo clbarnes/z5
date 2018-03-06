@@ -1,10 +1,14 @@
 import os
 import json
+import numpy as np
+from warnings import warn
 from .dataset import Dataset
 from .attribute_manager import AttributeManager
 
 
 class Base(object):
+    default_dataset_chunk_size = 64
+    default_dataset_dtype = np.dtype('float32')
 
     def __init__(self, path, is_zarr=True):
         self.path = path
@@ -27,16 +31,57 @@ class Base(object):
 
     # TODO open_dataset, open_group and close_group should also be implemented here
 
-    # TODO allow creating with data ?!
-    def create_dataset(self, key, dtype, shape, chunks,
-                       fill_value=0, compression='raw',
+    def create_dataset(self, key, dtype=None, shape=None, chunks=None,
+                       fill_value=0, compression='raw', data=None,
                        **compression_options):
         assert key not in self.keys(), "Dataset is already existing"
+
+        if data is None:
+            assert shape is not None, "Datasets must be given a shape"
+            if chunks is None:
+                chunks = tuple(min(s, self.default_dataset_chunk_size) for s in shape)
+            if dtype is None:
+                warn('Data type was not given, using ' + str(self.default_dataset_dtype))
+                dtype = self.default_dataset_dtype
+        else:
+            data_chunks = getattr(data, 'chunks', None)
+            data_dtype = getattr(data, 'dtype', None)
+            data_shape = getattr(data, 'shape', None)
+
+            if data_dtype is None or data_shape is None:
+                data = np.asarray(data)
+                data_dtype = data.dtype
+                data_shape = data.shape
+
+            if dtype is None:
+                dtype = data_dtype
+            else:
+                assert dtype == data_dtype, "Given dtype ({}) conflicts with type of given data ({})".format(
+                    dtype, data_dtype
+                )  # could coerce instead
+
+            if shape is None:
+                shape = data_shape
+            else:
+                assert shape == data_shape, "Given shape ({}) conflicts with shape of given data ({})".format(
+                    shape, data_shape
+                )
+
+            chunks = chunks or data_chunks
+            if chunks is None:
+                chunks = tuple(min(s, self.default_dataset_chunk_size) for s in shape)
+
         path = os.path.join(self.path, key)
-        return Dataset.create_dataset(path, dtype, shape,
+        ds = Dataset.create_dataset(path, dtype, shape,
                                       chunks, self.is_zarr,
                                       compression, compression_options,
                                       fill_value)
+
+        if data is None:
+            return ds
+
+        ds[:] = data
+        return ds
 
     def is_group(self, key):
         path = os.path.join(self.path, key)
