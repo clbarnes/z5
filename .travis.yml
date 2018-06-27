@@ -33,7 +33,7 @@ before_script:
   # - conda install -c psi4 gcc-5
   - conda install -c conda-forge xtensor=0.15.1
   - conda install -c conda-forge xtensor-python
-  - conda install -c conda-forge boost c-blosc zlib bzip2 xz
+  - conda install -c conda-forge boost=1.63.0 c-blosc zlib bzip2 xz
   - conda install -c conda-forge imageio
   - conda install -c conda-forge zarr
   - conda install -c conda-forge h5py
